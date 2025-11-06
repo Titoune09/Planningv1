@@ -25,6 +25,8 @@ import { useToast } from '@/hooks/use-toast'
 import { createOrg } from '@/lib/firebase-client'
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+
 const STEPS = [
   { id: 1, name: 'Identité', description: 'Informations de base' },
   { id: 2, name: 'Jours ouvrés', description: 'Configuration des horaires' },
@@ -128,7 +130,7 @@ export default function OnboardingPage() {
 
           {/* Stepper */}
           <div className="mb-8 hidden md:flex md:justify-between">
-            {STEPS.map((step, index) => (
+            {STEPS.map((step) => (
               <div key={step.id} className="flex flex-col items-center">
                 <div
                   className={`flex h-10 w-10 items-center justify-center rounded-full ${

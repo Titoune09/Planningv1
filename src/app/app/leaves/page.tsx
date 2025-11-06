@@ -2,7 +2,7 @@
 
 import { useCurrentOrg } from '@/hooks/use-org'
 import { useQuery } from '@tanstack/react-query'
-import { collection, query, where, getDocs } from 'firebase/firestore'
+import { collection, query, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Button } from '@/components/ui/button'
 import {
@@ -16,6 +16,8 @@ import { Badge } from '@/components/ui/badge'
 import { Calendar, Plus } from 'lucide-react'
 import type { LeaveRequest } from '@/types/firestore'
 import Link from 'next/link'
+
+export const dynamic = 'force-dynamic'
 
 export default function LeavesPage() {
   const { currentOrgId, currentMembership } = useCurrentOrg()

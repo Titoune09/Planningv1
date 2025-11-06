@@ -8,6 +8,8 @@ import { useState } from 'react'
 import { addWeeks, format, startOfWeek, addDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
+export const dynamic = 'force-dynamic'
+
 export default function PlanningPage() {
   const { currentOrg } = useCurrentOrg()
   const [currentDate, setCurrentDate] = useState(new Date())

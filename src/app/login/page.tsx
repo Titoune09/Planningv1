@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
 
+export const dynamic = 'force-dynamic'
+
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -35,7 +37,12 @@ export default function LoginPage() {
         router.push('/app')
       } else {
         await signUp(email, password)
-        router.push('/onboarding')
+        toast({
+          title: 'Compte créé !',
+          description: 'Un email de vérification a été envoyé à votre adresse. Veuillez vérifier votre boîte de réception avant de vous connecter.',
+        })
+        setMode('login')
+        setPassword('')
       }
     } catch (error: unknown) {
       const err = error as { code?: string; message?: string }

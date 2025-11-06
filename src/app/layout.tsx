@@ -6,9 +6,9 @@ import { Providers } from '@/components/providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Planificateur d\'Employés',
+  title: 'Planneo - Gestion de Planning Simplifiée',
   description:
-    'Outil de gestion de planning multi-entreprises pour restauration, retail et services',
+    'Planneo vous aide à gérer les plannings de vos équipes, les congés et les horaires en toute simplicité. Pour la restauration, le retail et les services.',
 }
 
 export default function RootLayout({
