@@ -1,10 +1,11 @@
 import * as admin from 'firebase-admin'
-import { auth } from 'firebase-functions/v2'
+import { identity } from 'firebase-functions/v2'
 
 /**
  * Trigger: création automatique du profil utilisateur global
  */
-export const onUserCreated = auth.user().onCreate(async (user) => {
+export const onUserCreated = identity.beforeUserCreated(async (event) => {
+  const user = event.data
   const db = admin.firestore()
 
   try {
