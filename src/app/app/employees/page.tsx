@@ -4,7 +4,6 @@ import { useCurrentOrg } from '@/hooks/use-org'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Users, Plus, UserPlus } from 'lucide-react'
-import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 

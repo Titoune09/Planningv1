@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { User, Mail, Shield, Key } from 'lucide-react'
+import { Mail, Shield, Key } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
