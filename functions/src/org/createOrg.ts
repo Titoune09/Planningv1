@@ -66,23 +66,41 @@ const createOrgSchema = z.object({
 })
 
 export const createOrg = https.onCall(async (request) => {
+  console.log('🚀 [createOrg] Début de la création d\'organisation')
+  console.log('📝 [createOrg] Données reçues:', JSON.stringify(request.data, null, 2))
+  
   const auth = requireAuth(request)
+  console.log('✅ [createOrg] Utilisateur authentifié:', auth.uid)
+  
   const db = admin.firestore()
 
   // Validation
-  const data = createOrgSchema.parse(request.data)
+  let data
+  try {
+    data = createOrgSchema.parse(request.data)
+    console.log('✅ [createOrg] Validation des données réussie')
+  } catch (validationError) {
+    console.error('❌ [createOrg] Erreur de validation:', validationError)
+    throw new https.HttpsError('invalid-argument', 'Données invalides: ' + (validationError as Error).message)
+  }
 
   // Génération du slug unique
+  console.log('🔄 [createOrg] Génération du slug...')
   const slug = data.slug
     ? await generateUniqueSlug(db, data.slug)
     : await generateUniqueSlug(db, data.name)
+  console.log('✅ [createOrg] Slug généré:', slug)
 
   const orgId = db.collection('orgs').doc().id
+  console.log('✅ [createOrg] ID d\'organisation généré:', orgId)
+  
   const now = admin.firestore.FieldValue.serverTimestamp()
 
   try {
+    console.log('🔄 [createOrg] Début de la transaction...')
     await db.runTransaction(async (transaction) => {
       // 1. Créer l'organisation
+      console.log('📝 [createOrg] Étape 1: Création de l\'organisation')
       const orgRef = db.collection('orgs').doc(orgId)
       
       // Utiliser les openDays fournis ou les valeurs par défaut
@@ -104,8 +122,10 @@ export const createOrg = https.onCall(async (request) => {
           holidaysRegion: 'FR',
         },
       })
+      console.log('✅ [createOrg] Étape 1 terminée')
 
       // 2. Créer le membership owner
+      console.log('📝 [createOrg] Étape 2: Création du membership owner')
       const membershipRef = orgRef.collection('memberships').doc(auth.uid)
       transaction.set(membershipRef, {
         userId: auth.uid,
@@ -115,8 +135,10 @@ export const createOrg = https.onCall(async (request) => {
         createdAt: now,
         updatedAt: now,
       })
+      console.log('✅ [createOrg] Étape 2 terminée')
 
       // 3. Créer les rôles (fournis ou par défaut)
+      console.log('📝 [createOrg] Étape 3: Création des rôles')
       const rolesToCreate = data.roles && data.roles.length > 0
         ? data.roles
         : getDefaultRoles(data.industry as Industry)
@@ -131,6 +153,7 @@ export const createOrg = https.onCall(async (request) => {
         })
         createdRoleIds.push(roleRef.id)
       }
+      console.log('✅ [createOrg] Étape 3 terminée -', createdRoleIds.length, 'rôles créés')
 
       // 4. Créer les employés initiaux (si fournis)
       if (data.employees && data.employees.length > 0) {
@@ -158,8 +181,10 @@ export const createOrg = https.onCall(async (request) => {
           })
         }
       }
+      console.log('✅ [createOrg] Étape 4 terminée -', data.employees?.length || 0, 'employés créés')
 
       // 5. Créer une politique de congés par défaut
+      console.log('📝 [createOrg] Étape 5: Création de la politique de congés')
       const policyRef = orgRef.collection('policies').doc()
       transaction.set(policyRef, {
         orgId,
@@ -175,6 +200,7 @@ export const createOrg = https.onCall(async (request) => {
         createdAt: now,
         updatedAt: now,
       })
+      console.log('✅ [createOrg] Étape 5 terminée')
 
       // 6. Créer les gabarits de planning (si fournis)
       if (data.templates && data.templates.length > 0) {
@@ -206,8 +232,10 @@ export const createOrg = https.onCall(async (request) => {
           })
         }
       }
+      console.log('✅ [createOrg] Étape 6 terminée -', data.templates?.length || 0, 'gabarits créés')
 
       // 7. Log audit
+      console.log('📝 [createOrg] Étape 7: Création du log d\'audit')
       const auditRef = orgRef.collection('auditLogs').doc()
       transaction.set(auditRef, {
         orgId,
@@ -222,7 +250,11 @@ export const createOrg = https.onCall(async (request) => {
           templatesCount: data.templates?.length || 0,
         },
       })
+      console.log('✅ [createOrg] Étape 7 terminée - Toutes les étapes de la transaction sont complètes')
     })
+
+    console.log('✅ [createOrg] Transaction réussie')
+    console.log('🎉 [createOrg] Organisation créée avec succès:', { orgId, slug })
 
     return {
       success: true,
@@ -230,7 +262,14 @@ export const createOrg = https.onCall(async (request) => {
       slug,
     }
   } catch (error) {
-    console.error('Error creating org:', error)
-    throw new https.HttpsError('internal', 'Erreur lors de la création de l\'organisation.')
+    console.error('❌ [createOrg] Erreur lors de la création:', error)
+    
+    // Log détaillé de l'erreur
+    if (error instanceof Error) {
+      console.error('❌ [createOrg] Message:', error.message)
+      console.error('❌ [createOrg] Stack:', error.stack)
+    }
+    
+    throw new https.HttpsError('internal', 'Erreur lors de la création de l\'organisation: ' + (error as Error).message)
   }
 })
