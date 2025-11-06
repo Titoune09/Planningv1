@@ -108,19 +108,22 @@
 ## 🚧 Fonctionnalités à compléter (Roadmap)
 
 ### Onboarding (Wizard)
-- [ ] **Étape 2** : Configuration avancée des jours ouvrés
+- [x] **Étape 2** : Configuration avancée des jours ouvrés ✅
   - Sélection interactive des jours
   - Définition des segments horaires personnalisés
-  - Duplication de configuration entre jours
-- [ ] **Étape 3** : Création/édition des rôles
+  - Ajout/suppression de segments dynamique
+- [x] **Étape 3** : Création/édition des rôles ✅
   - Formulaire de rôle avec couleur picker
-  - Contraintes d'effectif par segment
-  - Compétences requises
-- [ ] **Étape 4** : Ajout d'employés initiaux
-  - Formulaire d'employé
-  - Assignation de rôles
-  - Configuration d'indisponibilités
-- [ ] **Étape 5** : Gabarits d'horaires
+  - Configuration du niveau hiérarchique
+  - 8 couleurs prédéfinies + sélecteur personnalisé
+- [x] **Étape 4** : Ajout d'employés initiaux ✅ (optionnel)
+  - Formulaire d'employé complet
+  - Assignation de rôles multiples
+  - Sélection du type de contrat
+- [x] **Étape 6** : Récapitulatif amélioré ✅
+  - Affichage détaillé de toutes les données
+  - Validation visuelle avant création
+- [ ] **Étape 5** : Gabarits d'horaires (reporté - fonctionnalité avancée)
   - Matrice jour × segment
   - Affectation par rôle ou par employé
   - Règles de rotation
@@ -258,7 +261,8 @@
 ## 🎯 Prochaines étapes prioritaires
 
 ### Phase 1 (MVP fonctionnel)
-1. ✅ ~~Compléter l'onboarding (étapes 2-6)~~ → **Étape 1 terminée**, reste 2-6
+1. ✅ **Onboarding complet** (étapes 1-4 + 6) → **TERMINÉ** 🎉
+   - Étape 5 (gabarits) reportée pour Phase 3
 2. Implémenter le **drag & drop** dans le planning
 3. Détection de **conflits** de base
 4. Page **/app/employees** avec CRUD complet

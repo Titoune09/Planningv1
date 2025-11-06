@@ -32,12 +32,48 @@ export default function AppHomePage() {
 
   return (
     <div className="container py-8">
-      <h2 className="text-3xl font-bold">{currentOrg.name}</h2>
-      <p className="mt-2 text-muted-foreground">
-        Bienvenue dans votre espace de gestion
-      </p>
+      {/* Header avec statistiques */}
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold">{currentOrg.name}</h2>
+        <p className="mt-2 text-muted-foreground">
+          Bienvenue dans votre espace de gestion
+        </p>
+      </div>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Statistiques rapides */}
+      <div className="mb-8 grid gap-4 md:grid-cols-3">
+        <div className="rounded-lg border bg-card p-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-muted-foreground">Employés</p>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <p className="mt-2 text-2xl font-bold">-</p>
+          <p className="text-xs text-muted-foreground">Aucune donnée</p>
+        </div>
+        
+        <div className="rounded-lg border bg-card p-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-muted-foreground">Demandes de congés</p>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <p className="mt-2 text-2xl font-bold">-</p>
+          <p className="text-xs text-muted-foreground">En attente</p>
+        </div>
+        
+        <div className="rounded-lg border bg-card p-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-muted-foreground">Plannings publiés</p>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <p className="mt-2 text-2xl font-bold">-</p>
+          <p className="text-xs text-muted-foreground">Ce mois</p>
+        </div>
+      </div>
+
+      {/* Actions rapides */}
+      <div>
+        <h3 className="mb-4 text-lg font-semibold">Actions rapides</h3>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Link
           href="/app/planning"
           className="block rounded-lg border bg-card p-6 transition-colors hover:bg-accent"

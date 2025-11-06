@@ -1,6 +1,31 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from './firebase'
 
+type TimeSegment = {
+  name: string
+  start: string
+  end: string
+}
+
+type OpenDay = {
+  day: number
+  isOpen: boolean
+  segments: TimeSegment[]
+}
+
+type RoleData = {
+  name: string
+  color: string
+  level?: number
+}
+
+type EmployeeData = {
+  firstName: string
+  lastName: string
+  roles: string[]
+  contractType: 'cdi' | 'cdd' | 'extra' | 'interim' | 'stage'
+}
+
 export const createOrg = httpsCallable<
   {
     name: string
@@ -14,6 +39,9 @@ export const createOrg = httpsCallable<
       | 'agency'
       | 'events'
       | 'other'
+    openDays?: OpenDay[]
+    roles?: RoleData[]
+    employees?: EmployeeData[]
   },
   { success: boolean; orgId: string; slug: string }
 >(functions, 'createOrg')
