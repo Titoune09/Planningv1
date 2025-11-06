@@ -9,6 +9,7 @@ export { inviteUser } from './org/inviteUser'
 export { redeemInvite } from './org/redeemInvite'
 export { submitLeave } from './leave/submitLeave'
 export { decideLeave } from './leave/decideLeave'
+export { createSchedule } from './schedule/createSchedule'
 export { assignShift } from './schedule/assignShift'
 
 // Triggers
