@@ -118,6 +118,7 @@ export default function AppHomePage() {
           </p>
         </Link>
       </div>
+      </div>
     </div>
   )
 }
