@@ -99,6 +99,16 @@ export const decideLeave = httpsCallable<
   { success: boolean; requestId: string; decision: string }
 >(functions, 'decideLeave')
 
+export const createSchedule = httpsCallable<
+  {
+    orgId: string
+    startDate: string // YYYY-MM-DD
+    endDate: string // YYYY-MM-DD
+    templateId?: string
+  },
+  { success: boolean; scheduleId: string; daysCreated: number }
+>(functions, 'createSchedule')
+
 export const assignShift = httpsCallable<
   {
     orgId: string
