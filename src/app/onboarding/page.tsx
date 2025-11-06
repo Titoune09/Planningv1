@@ -163,6 +163,14 @@ export default function OnboardingPage() {
 
     setIsSubmitting(true)
     try {
+      console.log('🚀 Tentative de création d\'organisation:', {
+        name: data.name,
+        industry: data.industry,
+        rolesCount: data.roles.length,
+        employeesCount: data.employees.length,
+        templatesCount: data.templates.length,
+      })
+
       const result = await createOrg({
         name: data.name,
         industry: data.industry,
@@ -174,6 +182,8 @@ export default function OnboardingPage() {
         templates: data.templates,
       })
 
+      console.log('✅ Résultat de la création:', result)
+
       if (result.data.success) {
         toast({
           title: 'Organisation créée !',
@@ -181,11 +191,21 @@ export default function OnboardingPage() {
         })
         router.push('/app')
       }
-    } catch (error) {
-      console.error(error)
+    } catch (error: any) {
+      console.error('❌ Erreur lors de la création:', error)
+      
+      // Extraire le message d'erreur détaillé
+      let errorMessage = 'Impossible de créer l\'organisation.'
+      
+      if (error.code) {
+        errorMessage = `Erreur ${error.code}: ${error.message || errorMessage}`
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
       toast({
         title: 'Erreur',
-        description: 'Impossible de créer l\'organisation.',
+        description: errorMessage,
         variant: 'destructive',
       })
     } finally {
