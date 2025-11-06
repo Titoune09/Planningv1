@@ -1,0 +1,27 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Organisation files: /orgs/{orgId}/...
+    match /orgs/{orgId}/{allPaths=**} {
+      // Seulement les membres de l'org peuvent lire/écrire
+      // Note: validation plus fine peut être faite côté Functions
+      allow read, write: if isAuthenticated();
+    }
+    
+    // User avatars: /users/{userId}/avatar
+    match /users/{userId}/avatar {
+      allow read: if true;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Deny all by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

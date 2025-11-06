@@ -1,0 +1,155 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========== HELPER FUNCTIONS ==========
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserId() {
+      return request.auth.uid;
+    }
+    
+    function isMemberOf(orgId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/orgs/$(orgId)/memberships/$(getUserId())) &&
+        get(/databases/$(database)/documents/orgs/$(orgId)/memberships/$(getUserId())).data.status == 'active';
+    }
+    
+    function isManagerOrOwner(orgId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/orgs/$(orgId)/memberships/$(getUserId())) &&
+        get(/databases/$(database)/documents/orgs/$(orgId)/memberships/$(getUserId())).data.status == 'active' &&
+        get(/databases/$(database)/documents/orgs/$(orgId)/memberships/$(getUserId())).data.role in ['manager', 'owner'];
+    }
+    
+    function isOwner(orgId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/orgs/$(orgId)/memberships/$(getUserId())) &&
+        get(/databases/$(database)/documents/orgs/$(orgId)/memberships/$(getUserId())).data.role == 'owner';
+    }
+    
+    // ========== USERS (global) ==========
+    
+    match /users/{userId} {
+      allow read: if isAuthenticated() && getUserId() == userId;
+      allow write: if isAuthenticated() && getUserId() == userId;
+    }
+    
+    // ========== ORGANIZATIONS ==========
+    
+    match /orgs/{orgId} {
+      allow read: if isMemberOf(orgId);
+      allow update: if isManagerOrOwner(orgId);
+      allow create: if false; // Only via Cloud Function
+      allow delete: if isOwner(orgId);
+      
+      // ========== MEMBERSHIPS ==========
+      
+      match /memberships/{membershipId} {
+        // Membres peuvent lire leur propre membership
+        // Managers peuvent lire tous les memberships
+        allow read: if isMemberOf(orgId) && 
+          (membershipId == getUserId() || isManagerOrOwner(orgId));
+        
+        // Écriture UNIQUEMENT via Cloud Functions
+        allow write: if false;
+      }
+      
+      // ========== EMPLOYEES ==========
+      
+      match /employees/{employeeId} {
+        allow read: if isMemberOf(orgId);
+        allow create, update, delete: if isManagerOrOwner(orgId);
+      }
+      
+      // ========== ROLES ==========
+      
+      match /roles/{roleId} {
+        allow read: if isMemberOf(orgId);
+        allow write: if isManagerOrOwner(orgId);
+      }
+      
+      // ========== INVITES ==========
+      
+      match /invites/{inviteId} {
+        allow read: if isManagerOrOwner(orgId);
+        allow create: if isManagerOrOwner(orgId);
+        allow update, delete: if false; // Via Cloud Functions uniquement
+      }
+      
+      // ========== TEMPLATES ==========
+      
+      match /templates/{templateId} {
+        allow read: if isMemberOf(orgId);
+        allow write: if isManagerOrOwner(orgId);
+      }
+      
+      // ========== SCHEDULES ==========
+      
+      match /schedules/{scheduleId} {
+        allow read: if isMemberOf(orgId);
+        allow write: if isManagerOrOwner(orgId);
+        
+        // Days (sous-collection)
+        match /days/{dayId} {
+          allow read: if isMemberOf(orgId);
+          allow write: if isManagerOrOwner(orgId);
+        }
+      }
+      
+      // ========== LEAVE REQUESTS ==========
+      
+      match /leaveRequests/{requestId} {
+        // Un employé peut créer une demande SI:
+        // - il est authentifié
+        // - l'employeeId dans la demande est lié à son userId
+        allow create: if isAuthenticated() && 
+          request.resource.data.createdByUserId == getUserId() &&
+          exists(/databases/$(database)/documents/orgs/$(orgId)/employees/$(request.resource.data.employeeId)) &&
+          get(/databases/$(database)/documents/orgs/$(orgId)/employees/$(request.resource.data.employeeId)).data.linkedUserId == getUserId();
+        
+        // Lecture:
+        // - l'employé peut lire SES demandes
+        // - manager/owner peuvent lire toutes
+        allow read: if isMemberOf(orgId) && (
+          (resource.data.createdByUserId == getUserId()) ||
+          isManagerOrOwner(orgId)
+        );
+        
+        // Update (statut): uniquement manager/owner
+        allow update: if isManagerOrOwner(orgId);
+        
+        allow delete: if false;
+      }
+      
+      // ========== POLICIES ==========
+      
+      match /policies/{policyId} {
+        allow read: if isMemberOf(orgId);
+        allow write: if isManagerOrOwner(orgId);
+      }
+      
+      // ========== AUDIT LOGS ==========
+      
+      match /auditLogs/{logId} {
+        allow read: if isManagerOrOwner(orgId);
+        allow write: if false; // Écriture uniquement via Cloud Functions/triggers
+      }
+      
+      // ========== NOTIFICATIONS ==========
+      
+      match /notifications/{notifId} {
+        allow read: if false; // Pas de lecture client
+        allow write: if false; // Uniquement via Cloud Functions
+      }
+    }
+    
+    // Deny all by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

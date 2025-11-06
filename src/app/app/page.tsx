@@ -1,0 +1,85 @@
+'use client'
+
+import { useCurrentOrg } from '@/hooks/use-org'
+import { Button } from '@/components/ui/button'
+import { Calendar, Users, FileText, Settings } from 'lucide-react'
+import Link from 'next/link'
+
+export default function AppHomePage() {
+  const { currentOrg, isLoading } = useCurrentOrg()
+
+  if (isLoading) {
+    return <div className="container py-8">Chargement...</div>
+  }
+
+  if (!currentOrg) {
+    return (
+      <div className="container py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold">Bienvenue !</h2>
+          <p className="mt-2 text-muted-foreground">
+            Vous n&apos;avez pas encore d&apos;organisation.
+          </p>
+          <Button asChild className="mt-4">
+            <Link href="/onboarding">Créer une organisation</Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container py-8">
+      <h2 className="text-3xl font-bold">{currentOrg.name}</h2>
+      <p className="mt-2 text-muted-foreground">
+        Bienvenue dans votre espace de gestion
+      </p>
+
+      <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Link
+          href="/app/planning"
+          className="block rounded-lg border bg-card p-6 transition-colors hover:bg-accent"
+        >
+          <Calendar className="h-8 w-8 text-primary" />
+          <h3 className="mt-4 font-semibold">Planning</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Gérer les horaires de travail
+          </p>
+        </Link>
+
+        <Link
+          href="/app/employees"
+          className="block rounded-lg border bg-card p-6 transition-colors hover:bg-accent"
+        >
+          <Users className="h-8 w-8 text-primary" />
+          <h3 className="mt-4 font-semibold">Employés</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Gérer l&apos;équipe
+          </p>
+        </Link>
+
+        <Link
+          href="/app/leaves"
+          className="block rounded-lg border bg-card p-6 transition-colors hover:bg-accent"
+        >
+          <FileText className="h-8 w-8 text-primary" />
+          <h3 className="mt-4 font-semibold">Congés</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Gérer les demandes d&apos;absence
+          </p>
+        </Link>
+
+        <Link
+          href="/app/settings"
+          className="block rounded-lg border bg-card p-6 transition-colors hover:bg-accent"
+        >
+          <Settings className="h-8 w-8 text-primary" />
+          <h3 className="mt-4 font-semibold">Paramètres</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Configuration de l&apos;organisation
+          </p>
+        </Link>
+      </div>
+    </div>
+  )
+}
