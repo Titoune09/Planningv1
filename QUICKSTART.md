@@ -150,17 +150,135 @@ npm run test:e2e      # Playwright
 - [Schéma Firestore](./docs/FIRESTORE_SCHEMA.md)
 - [État d'implémentation](./docs/IMPLEMENTATION_STATUS.md)
 
-## 🚢 Déploiement (plus tard)
+## 🚢 Déploiement sur Vercel
 
+### Prérequis
+1. Compte Vercel (gratuit)
+2. Projet Firebase configuré en production
+3. Variables d'environnement Firebase prêtes
+
+### Étapes de déploiement
+
+#### 1. Connecter le projet à Vercel
 ```bash
-# 1. Build
+# Installer Vercel CLI (si nécessaire)
+npm i -g vercel
+
+# Se connecter
+vercel login
+
+# Lier le projet
+vercel link
+```
+
+#### 2. Configurer les variables d'environnement sur Vercel
+
+**Option A : Via le Dashboard Vercel**
+1. Aller sur https://vercel.com/dashboard
+2. Sélectionner votre projet
+3. Aller dans Settings → Environment Variables
+4. Ajouter les variables suivantes :
+
+```
+NEXT_PUBLIC_FIREBASE_API_KEY=votre-api-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=votre-projet.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=votre-projet-id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=votre-projet.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=votre-sender-id
+NEXT_PUBLIC_FIREBASE_APP_ID=votre-app-id
+NEXT_PUBLIC_ENV=production
+```
+
+**Option B : Via CLI**
+```bash
+vercel env add NEXT_PUBLIC_FIREBASE_API_KEY production
+vercel env add NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN production
+vercel env add NEXT_PUBLIC_FIREBASE_PROJECT_ID production
+vercel env add NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET production
+vercel env add NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID production
+vercel env add NEXT_PUBLIC_FIREBASE_APP_ID production
+vercel env add NEXT_PUBLIC_ENV production
+```
+
+#### 3. Déployer
+
+**Automatique (recommandé)**
+```bash
+git push origin main
+# Vercel déploie automatiquement via GitHub/GitLab
+```
+
+**Manuel**
+```bash
+# Build local
 npm run build
 
-# 2. Deploy Vercel (Frontend)
+# Deploy
 vercel --prod
+```
 
-# 3. Deploy Firebase (Backend)
-firebase deploy
+#### 4. Déployer Firebase Functions
+```bash
+# Build les functions
+npm run functions:build
+
+# Deploy sur Firebase
+firebase deploy --only functions
+```
+
+### ⚠️ Problèmes courants de déploiement
+
+#### Erreur 404 : NOT_FOUND
+**Causes possibles :**
+- ❌ Variables d'environnement manquantes ou incorrectes
+- ❌ Build échoué silencieusement
+- ❌ Dépendances incorrectes (ex: firebase-admin dans le projet principal)
+
+**Solutions :**
+1. Vérifier les logs de build Vercel
+2. S'assurer que toutes les variables d'environnement sont configurées
+3. Vérifier que `firebase-admin` n'est PAS dans les dependencies du package.json principal
+4. Redéployer après avoir corrigé les problèmes
+
+#### Build qui échoue
+**Vérifier :**
+```bash
+# Tester le build localement
+npm run build
+
+# Vérifier les types
+npm run type-check
+
+# Vérifier le lint
+npm run lint
+```
+
+#### Firebase Functions qui ne répondent pas
+**Solutions :**
+1. Vérifier que les functions sont déployées : `firebase functions:list`
+2. Vérifier les logs : `firebase functions:log`
+3. S'assurer que la région est correcte dans le code
+
+### 📊 Vérifier le déploiement
+
+1. **Frontend** : Accéder à votre URL Vercel
+2. **Page d'accueil** : Devrait afficher la landing page
+3. **Login** : Tester `/login`
+4. **Fonctionnalités** : Tester la création d'org, invitations, etc.
+
+### 🔄 Mises à jour
+
+```bash
+# 1. Faire vos changements
+git add .
+git commit -m "feat: nouvelle fonctionnalité"
+git push
+
+# 2. Vercel redéploie automatiquement
+
+# 3. Si vous avez modifié les Functions :
+npm run functions:build
+firebase deploy --only functions
 ```
 
 ---
