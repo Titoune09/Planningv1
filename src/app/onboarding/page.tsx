@@ -50,6 +50,19 @@ type EmployeeData = {
   contractType: 'cdi' | 'cdd' | 'extra' | 'interim' | 'stage'
 }
 
+type TemplateData = {
+  name: string
+  season?: 'low' | 'high' | 'normal'
+  matrix: {
+    [day: string]: {
+      [segmentName: string]: {
+        roleIndex: number // Index dans le tableau roles
+        count: number
+      }[]
+    }
+  }
+}
+
 type OnboardingData = {
   // Étape 1
   name: string
@@ -68,6 +81,8 @@ type OnboardingData = {
   roles: RoleData[]
   // Étape 4
   employees: EmployeeData[]
+  // Étape 5
+  templates: TemplateData[]
 }
 
 export default function OnboardingPage() {
@@ -81,6 +96,7 @@ export default function OnboardingPage() {
     openDays: [],
     roles: [],
     employees: [],
+    templates: [],
   })
 
   // Initialiser les données par défaut au montage du composant
@@ -155,6 +171,7 @@ export default function OnboardingPage() {
         openDays: data.openDays,
         roles: data.roles,
         employees: data.employees,
+        templates: data.templates,
       })
 
       if (result.data.success) {
@@ -267,7 +284,12 @@ export default function OnboardingPage() {
                   onChange={(updates) => setData({ ...data, ...updates })}
                 />
               )}
-              {currentStep === 5 && <Step5Placeholder />}
+              {currentStep === 5 && (
+                <Step5
+                  data={data}
+                  onChange={(updates) => setData({ ...data, ...updates })}
+                />
+              )}
               {currentStep === 6 && <Step6 data={data} />}
             </CardContent>
           </Card>
@@ -922,13 +944,318 @@ function Step4({
   )
 }
 
-function Step5Placeholder() {
+// === STEP 5: GABARITS ===
+function Step5({
+  data,
+  onChange,
+}: {
+  data: OnboardingData
+  onChange: (updates: Partial<OnboardingData>) => void
+}) {
+  const addTemplate = () => {
+    const newTemplate: TemplateData = {
+      name: '',
+      season: 'normal',
+      matrix: {},
+    }
+    
+    // Initialiser la matrice avec les jours ouverts et leurs segments
+    data.openDays.forEach((openDay) => {
+      if (openDay.isOpen) {
+        const dayKey = openDay.day.toString()
+        newTemplate.matrix[dayKey] = {}
+        openDay.segments.forEach((segment) => {
+          newTemplate.matrix[dayKey][segment.name] = []
+        })
+      }
+    })
+    
+    onChange({ templates: [...data.templates, newTemplate] })
+  }
+
+  const removeTemplate = (index: number) => {
+    const newTemplates = [...data.templates]
+    newTemplates.splice(index, 1)
+    onChange({ templates: newTemplates })
+  }
+
+  const updateTemplate = (index: number, updates: Partial<TemplateData>) => {
+    const newTemplates = [...data.templates]
+    newTemplates[index] = { ...newTemplates[index], ...updates }
+    onChange({ templates: newTemplates })
+  }
+
+  const addRoleToSegment = (
+    templateIndex: number,
+    dayKey: string,
+    segmentName: string
+  ) => {
+    const newTemplates = [...data.templates]
+    const segment = newTemplates[templateIndex].matrix[dayKey]?.[segmentName]
+    if (segment) {
+      segment.push({ roleIndex: 0, count: 1 })
+      onChange({ templates: newTemplates })
+    }
+  }
+
+  const updateSegmentRole = (
+    templateIndex: number,
+    dayKey: string,
+    segmentName: string,
+    roleSlotIndex: number,
+    updates: { roleIndex?: number; count?: number }
+  ) => {
+    const newTemplates = [...data.templates]
+    const roleSlot =
+      newTemplates[templateIndex].matrix[dayKey]?.[segmentName]?.[roleSlotIndex]
+    if (roleSlot) {
+      Object.assign(roleSlot, updates)
+      onChange({ templates: newTemplates })
+    }
+  }
+
+  const removeRoleFromSegment = (
+    templateIndex: number,
+    dayKey: string,
+    segmentName: string,
+    roleSlotIndex: number
+  ) => {
+    const newTemplates = [...data.templates]
+    const segment = newTemplates[templateIndex].matrix[dayKey]?.[segmentName]
+    if (segment) {
+      segment.splice(roleSlotIndex, 1)
+      onChange({ templates: newTemplates })
+    }
+  }
+
   return (
-    <div className="py-8 text-center text-muted-foreground">
-      <p>Gabarits d&apos;horaires (à implémenter)</p>
-      <p className="mt-2 text-sm">
-        Définir des modèles de planning réutilisables
-      </p>
+    <div className="space-y-4">
+      <div className="rounded-lg bg-blue-50 p-4">
+        <p className="text-sm text-blue-900">
+          <strong>Optionnel :</strong> Les gabarits sont des modèles de planning
+          réutilisables qui définissent les besoins en personnel pour chaque jour
+          et segment horaire.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Créez des modèles de planning type (ex: semaine calme, semaine chargée)
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addTemplate}
+          disabled={data.roles.length === 0 || data.openDays.filter(d => d.isOpen).length === 0}
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          Ajouter un gabarit
+        </Button>
+      </div>
+
+      {data.roles.length === 0 && (
+        <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+          <p className="text-sm text-orange-900">
+            Vous devez d&apos;abord définir des rôles (étape 3) pour créer des gabarits.
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-4">
+        {data.templates.map((template, templateIndex) => (
+          <div key={templateIndex} className="rounded-lg border p-4 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="flex-1 space-y-3">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label htmlFor={`template-name-${templateIndex}`}>
+                      Nom du gabarit
+                    </Label>
+                    <Input
+                      id={`template-name-${templateIndex}`}
+                      placeholder="Ex: Semaine normale, Haute saison..."
+                      value={template.name}
+                      onChange={(e) =>
+                        updateTemplate(templateIndex, { name: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`template-season-${templateIndex}`}>
+                      Type de période
+                    </Label>
+                    <Select
+                      value={template.season || 'normal'}
+                      onValueChange={(value) =>
+                        updateTemplate(templateIndex, {
+                          season: value as TemplateData['season'],
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Basse saison</SelectItem>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="high">Haute saison</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Configuration par jour */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium">Besoins en personnel</h4>
+                  {data.openDays
+                    .filter((d) => d.isOpen)
+                    .map((openDay) => {
+                      const dayKey = openDay.day.toString()
+                      return (
+                        <div key={dayKey} className="rounded-lg bg-muted p-3">
+                          <div className="mb-2 font-medium text-sm">
+                            {dayNames[openDay.day]}
+                          </div>
+                          <div className="space-y-2">
+                            {openDay.segments.map((segment) => (
+                              <div
+                                key={segment.name}
+                                className="rounded bg-white p-3 space-y-2"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium">
+                                    {segment.name} ({segment.start} - {segment.end})
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      addRoleToSegment(
+                                        templateIndex,
+                                        dayKey,
+                                        segment.name
+                                      )
+                                    }
+                                  >
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Ajouter
+                                  </Button>
+                                </div>
+                                <div className="space-y-2">
+                                  {template.matrix[dayKey]?.[segment.name]?.map(
+                                    (roleSlot, roleSlotIndex) => (
+                                      <div
+                                        key={roleSlotIndex}
+                                        className="flex items-center gap-2"
+                                      >
+                                        <Select
+                                          value={roleSlot.roleIndex.toString()}
+                                          onValueChange={(value) =>
+                                            updateSegmentRole(
+                                              templateIndex,
+                                              dayKey,
+                                              segment.name,
+                                              roleSlotIndex,
+                                              { roleIndex: parseInt(value) }
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger className="flex-1">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {data.roles.map((role, roleIndex) => (
+                                              <SelectItem
+                                                key={roleIndex}
+                                                value={roleIndex.toString()}
+                                              >
+                                                <span className="flex items-center gap-2">
+                                                  <span
+                                                    className="inline-block w-3 h-3 rounded-full"
+                                                    style={{
+                                                      backgroundColor: role.color,
+                                                    }}
+                                                  />
+                                                  {role.name || `Rôle ${roleIndex + 1}`}
+                                                </span>
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <Input
+                                          type="number"
+                                          min="1"
+                                          max="20"
+                                          value={roleSlot.count}
+                                          onChange={(e) =>
+                                            updateSegmentRole(
+                                              templateIndex,
+                                              dayKey,
+                                              segment.name,
+                                              roleSlotIndex,
+                                              { count: parseInt(e.target.value) }
+                                            )
+                                          }
+                                          className="w-20"
+                                        />
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            removeRoleFromSegment(
+                                              templateIndex,
+                                              dayKey,
+                                              segment.name,
+                                              roleSlotIndex
+                                            )
+                                          }
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    )
+                                  )}
+                                  {(!template.matrix[dayKey]?.[segment.name] ||
+                                    template.matrix[dayKey][segment.name].length ===
+                                      0) && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Aucun besoin défini
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => removeTemplate(templateIndex)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ))}
+
+        {data.templates.length === 0 && data.roles.length > 0 && (
+          <div className="py-8 text-center text-muted-foreground">
+            <p>Aucun gabarit créé</p>
+            <p className="mt-2 text-sm">
+              Les gabarits sont optionnels mais facilitent la création de plannings
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -1033,6 +1360,29 @@ function Step6({ data }: { data: OnboardingData }) {
                 </>
               ) : (
                 <span className="text-muted-foreground">Aucun employé ajouté</span>
+              )}
+            </div>
+          </div>
+
+          {/* Gabarits */}
+          <div>
+            <h4 className="text-sm font-medium mb-2">Gabarits de planning</h4>
+            <div className="text-sm">
+              {data.templates.length > 0 ? (
+                <>
+                  <span className="text-muted-foreground">
+                    {data.templates.length} gabarit{data.templates.length > 1 ? 's' : ''} créé{data.templates.length > 1 ? 's' : ''}
+                  </span>
+                  <div className="mt-2 space-y-1">
+                    {data.templates.map((template, index) => (
+                      <div key={index} className="text-xs text-muted-foreground">
+                        {template.name || `Gabarit ${index + 1}`} ({template.season === 'low' ? 'Basse saison' : template.season === 'high' ? 'Haute saison' : 'Normal'})
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <span className="text-muted-foreground">Aucun gabarit créé</span>
               )}
             </div>
           </div>

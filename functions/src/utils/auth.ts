@@ -1,4 +1,3 @@
-import * as admin from 'firebase-admin'
 import { https } from 'firebase-functions/v2'
 
 export interface AuthContext {

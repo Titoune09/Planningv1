@@ -26,6 +26,19 @@ type EmployeeData = {
   contractType: 'cdi' | 'cdd' | 'extra' | 'interim' | 'stage'
 }
 
+type TemplateData = {
+  name: string
+  season?: 'low' | 'high' | 'normal'
+  matrix: {
+    [day: string]: {
+      [segmentName: string]: {
+        roleIndex: number
+        count: number
+      }[]
+    }
+  }
+}
+
 export const createOrg = httpsCallable<
   {
     name: string
@@ -42,6 +55,7 @@ export const createOrg = httpsCallable<
     openDays?: OpenDay[]
     roles?: RoleData[]
     employees?: EmployeeData[]
+    templates?: TemplateData[]
   },
   { success: boolean; orgId: string; slug: string }
 >(functions, 'createOrg')

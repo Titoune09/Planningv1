@@ -22,6 +22,7 @@ export const inviteUser = https.onCall(async (request) => {
   await requireManagerOrOwner(db, auth.uid, data.orgId)
 
   // Vérifier que l'email n'est pas déjà membre
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const existingMemberships = await db
     .collection('orgs')
     .doc(data.orgId)

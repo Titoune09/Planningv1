@@ -1,19 +1,22 @@
-import * as admin from 'firebase-admin'
 import { firestore } from 'firebase-functions/v2'
+import type { QueryDocumentSnapshot } from 'firebase-functions/v2/firestore'
 
 /**
  * Trigger: mise à jour automatique lors de décision sur une demande de congé
  */
 export const onLeaveRequestUpdate = firestore
-  .document('orgs/{orgId}/leaveRequests/{requestId}')
-  .onUpdate(async (change, context) => {
-    const before = change.before.data()
-    const after = change.after.data()
-    const { orgId } = context.params
+  .onDocumentUpdated('orgs/{orgId}/leaveRequests/{requestId}', async (event) => {
+    const before = event.data?.before.data()
+    const after = event.data?.after.data()
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { orgId } = event.params
+
+    if (!before || !after) return null
 
     // Si passage de pending à approved
     if (before.status === 'pending' && after.status === 'approved') {
-      const db = admin.firestore()
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const employeeId = after.employeeId as string
 
       // Optionnel: créer des "blocages" automatiques dans les schedules
       // pour la période concernée
