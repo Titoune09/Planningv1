@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { AuthGuard } from '@/components/auth/auth-guard'
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,8 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { createOrg } from '@/lib/firebase-client'
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, Plus, Trash2 } from 'lucide-react'
+import type { OpenDay, TimeSegment } from '@/types/firestore'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,7 +37,21 @@ const STEPS = [
   { id: 6, name: 'Validation', description: 'Récapitulatif' },
 ]
 
+type RoleData = {
+  name: string
+  color: string
+  level?: number
+}
+
+type EmployeeData = {
+  firstName: string
+  lastName: string
+  roles: string[] // Indices dans le tableau roles
+  contractType: 'cdi' | 'cdd' | 'extra' | 'interim' | 'stage'
+}
+
 type OnboardingData = {
+  // Étape 1
   name: string
   industry:
     | 'restaurant'
@@ -47,6 +62,12 @@ type OnboardingData = {
     | 'other'
   timezone: string
   locale: string
+  // Étape 2
+  openDays: OpenDay[]
+  // Étape 3
+  roles: RoleData[]
+  // Étape 4
+  employees: EmployeeData[]
 }
 
 export default function OnboardingPage() {
@@ -57,7 +78,35 @@ export default function OnboardingPage() {
     industry: 'restaurant',
     timezone: 'Europe/Paris',
     locale: 'fr-FR',
+    openDays: [],
+    roles: [],
+    employees: [],
   })
+
+  // Initialiser les données par défaut au montage du composant
+  useEffect(() => {
+    if (data.openDays.length === 0 && data.roles.length === 0) {
+      const defaultOpenDays = getDefaultOpenDays(data.industry)
+      const defaultRoles = getDefaultRoles(data.industry)
+      setData((prev) => ({
+        ...prev,
+        openDays: defaultOpenDays,
+        roles: defaultRoles,
+      }))
+    }
+  }, [])
+
+  // Initialiser les données par défaut lors du changement d'industrie
+  const initializeDefaults = (industry: OnboardingData['industry']) => {
+    const defaultOpenDays = getDefaultOpenDays(industry)
+    const defaultRoles = getDefaultRoles(industry)
+    setData((prev) => ({
+      ...prev,
+      industry,
+      openDays: defaultOpenDays,
+      roles: defaultRoles,
+    }))
+  }
 
   const router = useRouter()
   const { toast } = useToast()
@@ -77,6 +126,25 @@ export default function OnboardingPage() {
   }
 
   const handleFinish = async () => {
+    // Validation de base
+    if (!data.name.trim()) {
+      toast({
+        title: 'Erreur',
+        description: 'Le nom de l\'organisation est requis',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (data.roles.length === 0) {
+      toast({
+        title: 'Attention',
+        description: 'Vous devez définir au moins un rôle',
+        variant: 'destructive',
+      })
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const result = await createOrg({
@@ -84,6 +152,9 @@ export default function OnboardingPage() {
         industry: data.industry,
         timezone: data.timezone,
         locale: data.locale,
+        openDays: data.openDays,
+        roles: data.roles,
+        employees: data.employees,
       })
 
       if (result.data.success) {
@@ -169,12 +240,33 @@ export default function OnboardingPage() {
               {currentStep === 1 && (
                 <Step1
                   data={data}
+                  onChange={(updates) => {
+                    setData({ ...data, ...updates })
+                    // Initialiser les valeurs par défaut si l'industrie change
+                    if (updates.industry && updates.industry !== data.industry) {
+                      initializeDefaults(updates.industry)
+                    }
+                  }}
+                />
+              )}
+              {currentStep === 2 && (
+                <Step2
+                  data={data}
                   onChange={(updates) => setData({ ...data, ...updates })}
                 />
               )}
-              {currentStep === 2 && <Step2Placeholder />}
-              {currentStep === 3 && <Step3Placeholder />}
-              {currentStep === 4 && <Step4Placeholder />}
+              {currentStep === 3 && (
+                <Step3
+                  data={data}
+                  onChange={(updates) => setData({ ...data, ...updates })}
+                />
+              )}
+              {currentStep === 4 && (
+                <Step4
+                  data={data}
+                  onChange={(updates) => setData({ ...data, ...updates })}
+                />
+              )}
               {currentStep === 5 && <Step5Placeholder />}
               {currentStep === 6 && <Step6 data={data} />}
             </CardContent>
@@ -299,36 +391,533 @@ function Step1({
   )
 }
 
-// Placeholders pour les autres étapes
-function Step2Placeholder() {
+// Fonctions helper pour obtenir les valeurs par défaut
+function getDefaultOpenDays(
+  industry: OnboardingData['industry']
+): OpenDay[] {
+  const segments = getDefaultSegments(industry)
+
+  return [
+    { day: 1, isOpen: true, segments }, // Lundi
+    { day: 2, isOpen: true, segments }, // Mardi
+    { day: 3, isOpen: true, segments }, // Mercredi
+    { day: 4, isOpen: true, segments }, // Jeudi
+    { day: 5, isOpen: true, segments }, // Vendredi
+    { day: 6, isOpen: true, segments }, // Samedi
+    { day: 0, isOpen: industry === 'restaurant', segments }, // Dimanche
+  ]
+}
+
+function getDefaultSegments(industry: OnboardingData['industry']): TimeSegment[] {
+  switch (industry) {
+    case 'restaurant':
+      return [
+        { name: 'Midi', start: '11:30', end: '15:00' },
+        { name: 'Soir', start: '18:30', end: '23:00' },
+      ]
+    case 'retail':
+      return [
+        { name: 'Matin', start: '09:00', end: '13:00' },
+        { name: 'Après-midi', start: '13:00', end: '18:00' },
+      ]
+    case 'healthcare':
+      return [
+        { name: 'Matin', start: '06:00', end: '14:00' },
+        { name: 'Après-midi', start: '14:00', end: '22:00' },
+        { name: 'Nuit', start: '22:00', end: '06:00' },
+      ]
+    default:
+      return [{ name: 'Journée', start: '09:00', end: '17:00' }]
+  }
+}
+
+function getDefaultRoles(
+  industry: OnboardingData['industry']
+): RoleData[] {
+  switch (industry) {
+    case 'restaurant':
+      return [
+        { name: 'Serveur', color: '#3b82f6', level: 1 },
+        { name: 'Chef', color: '#ef4444', level: 3 },
+        { name: 'Commis', color: '#8b5cf6', level: 1 },
+        { name: 'Manager', color: '#10b981', level: 4 },
+      ]
+    case 'retail':
+      return [
+        { name: 'Vendeur', color: '#3b82f6', level: 1 },
+        { name: 'Caissier', color: '#8b5cf6', level: 1 },
+        { name: 'Manager', color: '#10b981', level: 3 },
+      ]
+    case 'healthcare':
+      return [
+        { name: 'Infirmier', color: '#3b82f6', level: 2 },
+        { name: 'Aide-soignant', color: '#8b5cf6', level: 1 },
+        { name: 'Médecin', color: '#ef4444', level: 4 },
+      ]
+    default:
+      return [
+        { name: 'Employé', color: '#3b82f6', level: 1 },
+        { name: 'Manager', color: '#10b981', level: 2 },
+      ]
+  }
+}
+
+const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+
+// === STEP 2: JOURS OUVRÉS ===
+function Step2({
+  data,
+  onChange,
+}: {
+  data: OnboardingData
+  onChange: (updates: Partial<OnboardingData>) => void
+}) {
+  const toggleDay = (dayIndex: number) => {
+    const newOpenDays = [...data.openDays]
+    const day = newOpenDays.find((d) => d.day === dayIndex)
+    if (day) {
+      day.isOpen = !day.isOpen
+    }
+    onChange({ openDays: newOpenDays })
+  }
+
+  const updateSegment = (
+    dayIndex: number,
+    segmentIndex: number,
+    updates: Partial<TimeSegment>
+  ) => {
+    const newOpenDays = [...data.openDays]
+    const day = newOpenDays.find((d) => d.day === dayIndex)
+    if (day && day.segments[segmentIndex]) {
+      day.segments[segmentIndex] = {
+        ...day.segments[segmentIndex],
+        ...updates,
+      }
+      onChange({ openDays: newOpenDays })
+    }
+  }
+
+  const addSegment = (dayIndex: number) => {
+    const newOpenDays = [...data.openDays]
+    const day = newOpenDays.find((d) => d.day === dayIndex)
+    if (day) {
+      day.segments.push({
+        name: 'Nouveau segment',
+        start: '09:00',
+        end: '17:00',
+      })
+      onChange({ openDays: newOpenDays })
+    }
+  }
+
+  const removeSegment = (dayIndex: number, segmentIndex: number) => {
+    const newOpenDays = [...data.openDays]
+    const day = newOpenDays.find((d) => d.day === dayIndex)
+    if (day && day.segments.length > 1) {
+      day.segments.splice(segmentIndex, 1)
+      onChange({ openDays: newOpenDays })
+    }
+  }
+
   return (
-    <div className="py-8 text-center text-muted-foreground">
-      <p>Configuration des jours ouvrés (à implémenter)</p>
-      <p className="mt-2 text-sm">
-        Sélection des jours, heures d&apos;ouverture et segments horaires
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Sélectionnez vos jours d&apos;ouverture et configurez les segments horaires
       </p>
+
+      <div className="space-y-4">
+        {data.openDays.map((openDay) => (
+          <div
+            key={openDay.day}
+            className="rounded-lg border p-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={openDay.isOpen}
+                  onChange={() => toggleDay(openDay.day)}
+                  className="h-4 w-4"
+                />
+                <span className="font-medium">{dayNames[openDay.day]}</span>
+              </div>
+              {openDay.isOpen && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addSegment(openDay.day)}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Ajouter un segment
+                </Button>
+              )}
+            </div>
+
+            {openDay.isOpen && (
+              <div className="mt-3 space-y-2">
+                {openDay.segments.map((segment, segmentIndex) => (
+                  <div
+                    key={segmentIndex}
+                    className="flex items-center gap-2"
+                  >
+                    <Input
+                      placeholder="Nom"
+                      value={segment.name}
+                      onChange={(e) =>
+                        updateSegment(openDay.day, segmentIndex, {
+                          name: e.target.value,
+                        })
+                      }
+                      className="flex-1"
+                    />
+                    <Input
+                      type="time"
+                      value={segment.start}
+                      onChange={(e) =>
+                        updateSegment(openDay.day, segmentIndex, {
+                          start: e.target.value,
+                        })
+                      }
+                      className="w-32"
+                    />
+                    <span className="text-muted-foreground">-</span>
+                    <Input
+                      type="time"
+                      value={segment.end}
+                      onChange={(e) =>
+                        updateSegment(openDay.day, segmentIndex, {
+                          end: e.target.value,
+                        })
+                      }
+                      className="w-32"
+                    />
+                    {openDay.segments.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeSegment(openDay.day, segmentIndex)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
-function Step3Placeholder() {
+// === STEP 3: RÔLES ===
+function Step3({
+  data,
+  onChange,
+}: {
+  data: OnboardingData
+  onChange: (updates: Partial<OnboardingData>) => void
+}) {
+  const updateRole = (index: number, updates: Partial<RoleData>) => {
+    const newRoles = [...data.roles]
+    newRoles[index] = { ...newRoles[index], ...updates }
+    onChange({ roles: newRoles })
+  }
+
+  const addRole = () => {
+    onChange({
+      roles: [
+        ...data.roles,
+        { name: '', color: '#3b82f6', level: 1 },
+      ],
+    })
+  }
+
+  const removeRole = (index: number) => {
+    const newRoles = [...data.roles]
+    newRoles.splice(index, 1)
+    onChange({ roles: newRoles })
+  }
+
+  const presetColors = [
+    '#3b82f6', // blue
+    '#ef4444', // red
+    '#10b981', // green
+    '#f59e0b', // amber
+    '#8b5cf6', // violet
+    '#ec4899', // pink
+    '#06b6d4', // cyan
+    '#f97316', // orange
+  ]
+
   return (
-    <div className="py-8 text-center text-muted-foreground">
-      <p>Création des rôles (à implémenter)</p>
-      <p className="mt-2 text-sm">
-        Définir les postes de travail avec couleurs et contraintes
-      </p>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Définissez les rôles/postes de travail de votre organisation
+        </p>
+        <Button type="button" variant="outline" size="sm" onClick={addRole}>
+          <Plus className="h-4 w-4 mr-1" />
+          Ajouter un rôle
+        </Button>
+      </div>
+
+      <div className="space-y-3">
+        {data.roles.map((role, index) => (
+          <div
+            key={index}
+            className="rounded-lg border p-4"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-1 space-y-3">
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Label htmlFor={`role-name-${index}`}>Nom du rôle</Label>
+                    <Input
+                      id={`role-name-${index}`}
+                      placeholder="Ex: Serveur, Chef, Manager..."
+                      value={role.name}
+                      onChange={(e) => updateRole(index, { name: e.target.value })}
+                    />
+                  </div>
+                  <div className="w-24">
+                    <Label htmlFor={`role-level-${index}`}>Niveau</Label>
+                    <Input
+                      id={`role-level-${index}`}
+                      type="number"
+                      min="1"
+                      max="5"
+                      value={role.level || 1}
+                      onChange={(e) =>
+                        updateRole(index, { level: parseInt(e.target.value) })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Couleur</Label>
+                  <div className="mt-2 flex gap-2">
+                    {presetColors.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        className={`h-8 w-8 rounded border-2 ${
+                          role.color === color
+                            ? 'border-gray-900 ring-2 ring-gray-900 ring-offset-2'
+                            : 'border-gray-300'
+                        }`}
+                        style={{ backgroundColor: color }}
+                        onClick={() => updateRole(index, { color })}
+                      />
+                    ))}
+                    <Input
+                      type="color"
+                      value={role.color}
+                      onChange={(e) => updateRole(index, { color: e.target.value })}
+                      className="h-8 w-16"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => removeRole(index)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ))}
+
+        {data.roles.length === 0 && (
+          <div className="py-8 text-center text-muted-foreground">
+            <p>Aucun rôle défini</p>
+            <p className="mt-2 text-sm">
+              Cliquez sur &quot;Ajouter un rôle&quot; pour commencer
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
-function Step4Placeholder() {
+// === STEP 4: EMPLOYÉS ===
+function Step4({
+  data,
+  onChange,
+}: {
+  data: OnboardingData
+  onChange: (updates: Partial<OnboardingData>) => void
+}) {
+  const updateEmployee = (index: number, updates: Partial<EmployeeData>) => {
+    const newEmployees = [...data.employees]
+    newEmployees[index] = { ...newEmployees[index], ...updates }
+    onChange({ employees: newEmployees })
+  }
+
+  const addEmployee = () => {
+    onChange({
+      employees: [
+        ...data.employees,
+        {
+          firstName: '',
+          lastName: '',
+          roles: [],
+          contractType: 'cdi',
+        },
+      ],
+    })
+  }
+
+  const removeEmployee = (index: number) => {
+    const newEmployees = [...data.employees]
+    newEmployees.splice(index, 1)
+    onChange({ employees: newEmployees })
+  }
+
+  const toggleEmployeeRole = (employeeIndex: number, roleIndex: number) => {
+    const employee = data.employees[employeeIndex]
+    const roleIndexStr = roleIndex.toString()
+    const newRoles = employee.roles.includes(roleIndexStr)
+      ? employee.roles.filter((r) => r !== roleIndexStr)
+      : [...employee.roles, roleIndexStr]
+    updateEmployee(employeeIndex, { roles: newRoles })
+  }
+
   return (
-    <div className="py-8 text-center text-muted-foreground">
-      <p>Ajout des employés (à implémenter)</p>
-      <p className="mt-2 text-sm">
-        Créer les profils d&apos;employés avec rôles et contrats
-      </p>
+    <div className="space-y-4">
+      <div className="rounded-lg bg-blue-50 p-4">
+        <p className="text-sm text-blue-900">
+          <strong>Optionnel :</strong> Vous pouvez ajouter des employés maintenant
+          ou le faire plus tard depuis l&apos;application.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Ajoutez les membres de votre équipe
+        </p>
+        <Button type="button" variant="outline" size="sm" onClick={addEmployee}>
+          <Plus className="h-4 w-4 mr-1" />
+          Ajouter un employé
+        </Button>
+      </div>
+
+      <div className="space-y-3">
+        {data.employees.map((employee, index) => (
+          <div
+            key={index}
+            className="rounded-lg border p-4"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-1 space-y-3">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label htmlFor={`emp-first-${index}`}>Prénom</Label>
+                    <Input
+                      id={`emp-first-${index}`}
+                      placeholder="Jean"
+                      value={employee.firstName}
+                      onChange={(e) =>
+                        updateEmployee(index, { firstName: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`emp-last-${index}`}>Nom</Label>
+                    <Input
+                      id={`emp-last-${index}`}
+                      placeholder="Dupont"
+                      value={employee.lastName}
+                      onChange={(e) =>
+                        updateEmployee(index, { lastName: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor={`emp-contract-${index}`}>Type de contrat</Label>
+                  <Select
+                    value={employee.contractType}
+                    onValueChange={(value) =>
+                      updateEmployee(index, {
+                        contractType: value as EmployeeData['contractType'],
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cdi">CDI</SelectItem>
+                      <SelectItem value="cdd">CDD</SelectItem>
+                      <SelectItem value="extra">Extra</SelectItem>
+                      <SelectItem value="interim">Intérim</SelectItem>
+                      <SelectItem value="stage">Stage</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {data.roles.length > 0 && (
+                  <div>
+                    <Label>Rôles</Label>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {data.roles.map((role, roleIndex) => (
+                        <button
+                          key={roleIndex}
+                          type="button"
+                          onClick={() => toggleEmployeeRole(index, roleIndex)}
+                          className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+                            employee.roles.includes(roleIndex.toString())
+                              ? 'text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                          style={{
+                            backgroundColor: employee.roles.includes(
+                              roleIndex.toString()
+                            )
+                              ? role.color
+                              : undefined,
+                          }}
+                        >
+                          {role.name || `Rôle ${roleIndex + 1}`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => removeEmployee(index)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ))}
+
+        {data.employees.length === 0 && (
+          <div className="py-8 text-center text-muted-foreground">
+            <p>Aucun employé ajouté</p>
+            <p className="mt-2 text-sm">
+              Vous pourrez ajouter des employés plus tard
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -355,34 +944,105 @@ function Step6({ data }: { data: OnboardingData }) {
     other: 'Autre',
   }
 
+  const openDaysCount = data.openDays.filter((d) => d.isOpen).length
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg bg-muted p-4">
-        <h3 className="font-semibold">Récapitulatif</h3>
-        <div className="mt-4 space-y-2">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Organisation :</span>
-            <span className="font-medium">{data.name}</span>
+        <h3 className="font-semibold mb-4">Récapitulatif de votre configuration</h3>
+        
+        <div className="space-y-4">
+          {/* Informations générales */}
+          <div>
+            <h4 className="text-sm font-medium mb-2">Informations générales</h4>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Organisation :</span>
+                <span className="font-medium">{data.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Type d&apos;activité :</span>
+                <span className="font-medium">{industryLabels[data.industry]}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Fuseau horaire :</span>
+                <span className="font-medium">{data.timezone}</span>
+              </div>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Type d&apos;activité :</span>
-            <span className="font-medium">{industryLabels[data.industry]}</span>
+
+          {/* Jours ouvrés */}
+          <div>
+            <h4 className="text-sm font-medium mb-2">Jours ouvrés</h4>
+            <div className="text-sm">
+              <span className="text-muted-foreground">
+                {openDaysCount} jour{openDaysCount > 1 ? 's' : ''} d&apos;ouverture configuré{openDaysCount > 1 ? 's' : ''}
+              </span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {data.openDays
+                  .filter((d) => d.isOpen)
+                  .map((d) => (
+                    <span
+                      key={d.day}
+                      className="rounded bg-primary/10 px-2 py-1 text-xs font-medium"
+                    >
+                      {dayNames[d.day]} ({d.segments.length} segment{d.segments.length > 1 ? 's' : ''})
+                    </span>
+                  ))}
+              </div>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Fuseau horaire :</span>
-            <span className="font-medium">{data.timezone}</span>
+
+          {/* Rôles */}
+          <div>
+            <h4 className="text-sm font-medium mb-2">Rôles</h4>
+            <div className="text-sm">
+              <span className="text-muted-foreground">
+                {data.roles.length} rôle{data.roles.length > 1 ? 's' : ''} défini{data.roles.length > 1 ? 's' : ''}
+              </span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {data.roles.map((role, index) => (
+                  <span
+                    key={index}
+                    className="rounded-full px-3 py-1 text-xs font-medium text-white"
+                    style={{ backgroundColor: role.color }}
+                  >
+                    {role.name}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Langue :</span>
-            <span className="font-medium">{data.locale}</span>
+
+          {/* Employés */}
+          <div>
+            <h4 className="text-sm font-medium mb-2">Employés</h4>
+            <div className="text-sm">
+              {data.employees.length > 0 ? (
+                <>
+                  <span className="text-muted-foreground">
+                    {data.employees.length} employé{data.employees.length > 1 ? 's' : ''}
+                  </span>
+                  <div className="mt-2 space-y-1">
+                    {data.employees.map((emp, index) => (
+                      <div key={index} className="text-xs text-muted-foreground">
+                        {emp.firstName} {emp.lastName} ({emp.contractType.toUpperCase()})
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <span className="text-muted-foreground">Aucun employé ajouté</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-        <p className="text-sm text-blue-900">
-          <strong>Note :</strong> Après création, vous pourrez compléter la
-          configuration (jours ouvrés, rôles, employés) depuis les paramètres.
+      <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+        <p className="text-sm text-green-900">
+          <strong>Prêt !</strong> Votre organisation sera créée avec cette configuration.
+          Vous pourrez toujours la modifier depuis les paramètres.
         </p>
       </div>
     </div>

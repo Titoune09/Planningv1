@@ -5,6 +5,11 @@ Application de gestion de planning complète construite avec **Next.js**, **Fire
 ## 🎯 Fonctionnalités
 
 - ✅ **Multi-tenant** : Isolation stricte entre organisations
+- 🎉 **Onboarding complet** : Configuration complète en 6 étapes (NEW!)
+  - Configuration des jours ouvrés et segments horaires
+  - Personnalisation des rôles avec couleurs
+  - Ajout d'employés initiaux (optionnel)
+  - Valeurs par défaut selon l'industrie
 - 👥 **Gestion d'équipe** : Employés, rôles, contrats
 - 📆 **Planning** : Création et gestion des horaires par segments
 - 🏖️ **Congés** : Demandes et approbation d'absences
