@@ -1,5 +1,4 @@
-import { httpsCallable } from 'firebase/functions'
-import { functions } from './firebase'
+import { auth } from './firebase'
 
 type TimeSegment = {
   name: string
@@ -39,86 +38,134 @@ type TemplateData = {
   }
 }
 
-export const createOrg = httpsCallable<
-  {
-    name: string
-    slug?: string
-    timezone?: string
-    locale?: string
-    industry?:
-      | 'restaurant'
-      | 'retail'
-      | 'healthcare'
-      | 'agency'
-      | 'events'
-      | 'other'
-    openDays?: OpenDay[]
-    roles?: RoleData[]
-    employees?: EmployeeData[]
-    templates?: TemplateData[]
-  },
-  { success: boolean; orgId: string; slug: string }
->(functions, 'createOrg')
+/**
+ * Helper pour appeler les API Routes avec authentification
+ */
+async function apiCall<T = any>(endpoint: string, data: any): Promise<T> {
+  const user = auth.currentUser
+  if (!user) {
+    throw new Error('Non authentifié')
+  }
 
-export const inviteUser = httpsCallable<
-  {
-    orgId: string
-    email: string
-    targetRole?: 'manager' | 'employee'
-    employeeId?: string
-  },
-  { success: boolean; inviteId: string; token: string }
->(functions, 'inviteUser')
+  const token = await user.getIdToken()
 
-export const redeemInvite = httpsCallable<
-  { token: string },
-  { success: boolean; orgId: string; role: string }
->(functions, 'redeemInvite')
+  const response = await fetch(`/api/${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  })
 
-export const submitLeave = httpsCallable<
-  {
-    orgId: string
-    employeeId: string
-    type: 'paid' | 'unpaid' | 'rtt' | 'sick' | 'other'
-    startDate: string
-    endDate: string
-    segments?: string[]
-    reason?: string
-    attachments?: string[]
-  },
-  { success: boolean; requestId: string }
->(functions, 'submitLeave')
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Erreur lors de la requête')
+  }
 
-export const decideLeave = httpsCallable<
-  {
-    orgId: string
-    requestId: string
-    decision: 'approved' | 'rejected'
-    reason?: string
-  },
-  { success: boolean; requestId: string; decision: string }
->(functions, 'decideLeave')
+  return response.json()
+}
 
-export const createSchedule = httpsCallable<
-  {
-    orgId: string
-    startDate: string // YYYY-MM-DD
-    endDate: string // YYYY-MM-DD
-    templateId?: string
-  },
-  { success: boolean; scheduleId: string; daysCreated: number }
->(functions, 'createSchedule')
+export const createOrg = async (data: {
+  name: string
+  slug?: string
+  timezone?: string
+  locale?: string
+  industry?:
+    | 'restaurant'
+    | 'retail'
+    | 'healthcare'
+    | 'agency'
+    | 'events'
+    | 'other'
+  openDays?: OpenDay[]
+  roles?: RoleData[]
+  employees?: EmployeeData[]
+  templates?: TemplateData[]
+}): Promise<{ data: { success: boolean; orgId: string; slug: string } }> => {
+  const result = await apiCall<{ success: boolean; orgId: string; slug: string }>(
+    'createOrg',
+    data
+  )
+  return { data: result }
+}
 
-export const assignShift = httpsCallable<
-  {
-    orgId: string
-    scheduleId: string
-    dayId: string
-    segmentName: string
-    employeeId: string
-    role: string
-    start?: string
-    end?: string
-  },
-  { success: boolean }
->(functions, 'assignShift')
+export const inviteUser = async (data: {
+  orgId: string
+  email: string
+  targetRole?: 'manager' | 'employee'
+  employeeId?: string
+}): Promise<{ data: { success: boolean; inviteId: string; token: string } }> => {
+  const result = await apiCall<{ success: boolean; inviteId: string; token: string }>(
+    'inviteUser',
+    data
+  )
+  return { data: result }
+}
+
+export const redeemInvite = async (data: {
+  token: string
+}): Promise<{ data: { success: boolean; orgId: string; role: string } }> => {
+  const result = await apiCall<{ success: boolean; orgId: string; role: string }>(
+    'redeemInvite',
+    data
+  )
+  return { data: result }
+}
+
+export const submitLeave = async (data: {
+  orgId: string
+  employeeId: string
+  type: 'paid' | 'unpaid' | 'rtt' | 'sick' | 'other'
+  startDate: string
+  endDate: string
+  segments?: string[]
+  reason?: string
+  attachments?: string[]
+}): Promise<{ data: { success: boolean; requestId: string } }> => {
+  const result = await apiCall<{ success: boolean; requestId: string }>(
+    'submitLeave',
+    data
+  )
+  return { data: result }
+}
+
+export const decideLeave = async (data: {
+  orgId: string
+  requestId: string
+  decision: 'approved' | 'rejected'
+  reason?: string
+}): Promise<{ data: { success: boolean; requestId: string; decision: string } }> => {
+  const result = await apiCall<{ success: boolean; requestId: string; decision: string }>(
+    'decideLeave',
+    data
+  )
+  return { data: result }
+}
+
+export const createSchedule = async (data: {
+  orgId: string
+  startDate: string
+  endDate: string
+  templateId?: string
+}): Promise<{ data: { success: boolean; scheduleId: string; daysCreated: number } }> => {
+  const result = await apiCall<{ success: boolean; scheduleId: string; daysCreated: number }>(
+    'createSchedule',
+    data
+  )
+  return { data: result }
+}
+
+export const assignShift = async (data: {
+  orgId: string
+  scheduleId: string
+  dayId: string
+  segmentName: string
+  employeeId: string
+  role: string
+  start?: string
+  end?: string
+}): Promise<{ data: { success: boolean } }> => {
+  const result = await apiCall<{ success: boolean }>('assignShift', data)
+  return { data: result }
+}
