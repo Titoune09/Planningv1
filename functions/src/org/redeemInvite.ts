@@ -7,9 +7,13 @@ const redeemInviteSchema = z.object({
   token: z.string(),
 })
 
-export const redeemInvite = https.onCall(async (request) => {
-  const auth = requireAuth(request)
-  const db = admin.firestore()
+export const redeemInvite = https.onCall(
+  {
+    cors: true,
+  },
+  async (request) => {
+    const auth = requireAuth(request)
+    const db = admin.firestore()
 
   // Validation
   const data = redeemInviteSchema.parse(request.data)
@@ -128,4 +132,5 @@ export const redeemInvite = https.onCall(async (request) => {
     console.error('Error redeeming invite:', error)
     throw new https.HttpsError('internal', 'Erreur lors de l\'acceptation de l\'invitation.')
   }
-})
+  }
+)

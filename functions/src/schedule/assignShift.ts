@@ -14,9 +14,13 @@ const assignShiftSchema = z.object({
   end: z.string().regex(/^\d{2}:\d{2}$/).optional(),
 })
 
-export const assignShift = https.onCall(async (request) => {
-  const auth = requireAuth(request)
-  const db = admin.firestore()
+export const assignShift = https.onCall(
+  {
+    cors: true,
+  },
+  async (request) => {
+    const auth = requireAuth(request)
+    const db = admin.firestore()
 
   // Validation
   const data = assignShiftSchema.parse(request.data)
@@ -107,4 +111,5 @@ export const assignShift = https.onCall(async (request) => {
     console.error('Error assigning shift:', error)
     throw new https.HttpsError('internal', 'Erreur lors de l\'affectation.')
   }
-})
+  }
+)

@@ -11,9 +11,13 @@ const inviteUserSchema = z.object({
   employeeId: z.string().optional(),
 })
 
-export const inviteUser = https.onCall(async (request) => {
-  const auth = requireAuth(request)
-  const db = admin.firestore()
+export const inviteUser = https.onCall(
+  {
+    cors: true,
+  },
+  async (request) => {
+    const auth = requireAuth(request)
+    const db = admin.firestore()
 
   // Validation
   const data = inviteUserSchema.parse(request.data)
@@ -104,4 +108,5 @@ export const inviteUser = https.onCall(async (request) => {
     console.error('Error inviting user:', error)
     throw new https.HttpsError('internal', 'Erreur lors de l\'invitation.')
   }
-})
+  }
+)

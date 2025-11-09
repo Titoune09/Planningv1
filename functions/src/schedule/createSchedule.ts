@@ -10,9 +10,13 @@ const createScheduleSchema = z.object({
   templateId: z.string().optional(), // ID du template à utiliser (optionnel)
 })
 
-export const createSchedule = https.onCall(async (request) => {
-  const auth = requireAuth(request)
-  const db = admin.firestore()
+export const createSchedule = https.onCall(
+  {
+    cors: true,
+  },
+  async (request) => {
+    const auth = requireAuth(request)
+    const db = admin.firestore()
 
   // Validation
   const data = createScheduleSchema.parse(request.data)
@@ -161,4 +165,5 @@ export const createSchedule = https.onCall(async (request) => {
     console.error('Error creating schedule:', error)
     throw new https.HttpsError('internal', 'Erreur lors de la création du planning.')
   }
-})
+  }
+)

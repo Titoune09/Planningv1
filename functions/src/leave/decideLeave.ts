@@ -10,9 +10,13 @@ const decideLeaveSchema = z.object({
   reason: z.string().optional(),
 })
 
-export const decideLeave = https.onCall(async (request) => {
-  const auth = requireAuth(request)
-  const db = admin.firestore()
+export const decideLeave = https.onCall(
+  {
+    cors: true,
+  },
+  async (request) => {
+    const auth = requireAuth(request)
+    const db = admin.firestore()
 
   // Validation
   const data = decideLeaveSchema.parse(request.data)
@@ -116,4 +120,5 @@ export const decideLeave = https.onCall(async (request) => {
     console.error('Error deciding leave:', error)
     throw new https.HttpsError('internal', 'Erreur lors de la décision.')
   }
-})
+  }
+)

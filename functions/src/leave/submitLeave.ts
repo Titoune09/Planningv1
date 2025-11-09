@@ -14,9 +14,13 @@ const submitLeaveSchema = z.object({
   attachments: z.array(z.string()).optional(),
 })
 
-export const submitLeave = https.onCall(async (request) => {
-  const auth = requireAuth(request)
-  const db = admin.firestore()
+export const submitLeave = https.onCall(
+  {
+    cors: true,
+  },
+  async (request) => {
+    const auth = requireAuth(request)
+    const db = admin.firestore()
 
   // Validation
   const data = submitLeaveSchema.parse(request.data)
@@ -127,4 +131,5 @@ export const submitLeave = https.onCall(async (request) => {
     console.error('Error submitting leave:', error)
     throw new https.HttpsError('internal', 'Erreur lors de la soumission de la demande.')
   }
-})
+  }
+)

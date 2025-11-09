@@ -65,9 +65,13 @@ const createOrgSchema = z.object({
   templates: z.array(templateSchema).optional(),
 })
 
-export const createOrg = https.onCall(async (request) => {
-  const auth = requireAuth(request)
-  const db = admin.firestore()
+export const createOrg = https.onCall(
+  {
+    cors: true, // Autorise les requêtes CORS
+  },
+  async (request) => {
+    const auth = requireAuth(request)
+    const db = admin.firestore()
 
   // Validation
   const data = createOrgSchema.parse(request.data)
@@ -233,4 +237,5 @@ export const createOrg = https.onCall(async (request) => {
     console.error('Error creating org:', error)
     throw new https.HttpsError('internal', 'Erreur lors de la création de l\'organisation.')
   }
-})
+  }
+)
